@@ -8,7 +8,10 @@ fi
 
 # Input arguments
 gff_file="$1"
-genome_size_bp="$2"
+genome="$2"
+
+# Size is computed removing contig names, counting charachters and subtracting lines (\n)
+genome_size_bp=$(awk '{print $2 - $1}' < <(grep -v '^>' $genome | wc -l -c))
 
 # Function to calculate feature stats
 calculate_feature_stats() {
