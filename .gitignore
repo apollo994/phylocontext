@@ -1,5 +1,7 @@
 data
 tmp
 .ipynb_checkpoints
+annotations_ncbi
+.DS_Store
 *.log
 *.out
