@@ -209,7 +209,7 @@ def build_annotation_report(base_folder):
     df = df.dropna(axis=1, how="all")
 
     # Save cleaned report
-    df.to_csv(annotation_report, index=False)
+    df.to_csv(annotation_report, index=False, sep='\t')
     print(f"[INFO] Annotation report saved to: {annotation_report}")
 
 
