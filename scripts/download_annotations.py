@@ -3,9 +3,12 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import zipfile
+
+import pandas as pd
 
 
 def get_dataset_json(tax_id):
@@ -98,7 +101,7 @@ def get_annotation_count(focus_level):
 
 def download_annotation(
     focus_level, annotations_dir="annotations_ncbi", zip_name="ncbi_dataset.zip"
-):
+):  # follwing formatting rules caused sad face here
 
     os.makedirs(annotations_dir, exist_ok=True)
     output_path = os.path.join(annotations_dir, zip_name)
@@ -124,6 +127,7 @@ def download_annotation(
     ]
 
     try:
+        print(f"[INFO] Running command: {subprocess.list2cmdline(datasets_command)}")
         subprocess.run(datasets_command, check=True, text=True)
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Failed to run datasets download: {e}", file=sys.stderr)
@@ -132,8 +136,6 @@ def download_annotation(
     if not os.path.isfile(output_path):
         print(f"[ERROR] Download failed — {output_path} not found", file=sys.stderr)
         sys.exit(1)
-
-    print(f"[INFO] Command: {subprocess.list2cmdline(datasets_command)}")
 
     return output_path
 
@@ -163,14 +165,88 @@ def extract_annotation_zip(zip_path, extract_to=None):
     return extract_to
 
 
-def move_and_rename_annotations(annotations_dir):
+def generate_assembly_report(base_folder):
+    """
+    Converts assembly_data_report.jsonl to TSV using `dataformat` CLI
+    and writes the result to assembly_report.csv in base_folder.
+    """
+    data_dir = os.path.join(base_folder, "ncbi_dataset", "data")
+    jsonl_path = os.path.join(data_dir, "assembly_data_report.jsonl")
+    output_path = os.path.join(base_folder, "assembly_report.tsv")
 
-    return annotations_dir
+    if not os.path.isfile(jsonl_path):
+        print(f"[ERROR] Report file not found: {jsonl_path}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(jsonl_path, "r") as infile, open(output_path, "w") as outfile:
+            subprocess.run(
+                ["dataformat", "tsv", "genome"],
+                check=True,
+                text=True,
+                stdin=infile,
+                stdout=outfile,
+            )
+        print(f"[INFO] Assembly report saved to: {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] dataformat command failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
-def make_report(annotations_dir):
-    ##dataformat tsv genome < assembly_data_report.jsonl > check.tsv
-    return annotations_dir
+def build_annotation_report(base_folder):
+
+    assemblies_names = [
+        os.path.splitext(i)[0] for i in os.listdir(f"{base_folder}/annotations/")
+    ]
+    assembly_report = os.path.join(base_folder, "assembly_report.tsv")
+
+    # define output file
+    annotation_report = os.path.join(base_folder, "annotation_report.tsv")
+
+    df = pd.read_csv(assembly_report, sep="\t")
+    df = df[df["Assembly Accession"].isin(assemblies_names)]
+    df = df.drop_duplicates(subset="Assembly Accession", keep="first") # type: ignore
+    df = df.dropna(axis=1, how="all")
+
+    # Save cleaned report
+    df.to_csv(annotation_report, index=False)
+    print(f"[INFO] Annotation report saved to: {annotation_report}")
+
+
+def flatten_and_rename_gff(base_folder):
+    """
+    Reorganizes NCBI dataset folder by moving all genomic.gff files
+    into a subfolder called 'annotations', renaming them to their assembly name.
+    """
+    data_dir = os.path.join(base_folder, "ncbi_dataset", "data")
+    annotations_dir = os.path.join(base_folder, "annotations")
+
+    if not os.path.isdir(data_dir):
+        print(f"[ERROR] Expected data directory not found: {data_dir}")
+        return
+
+    os.makedirs(annotations_dir, exist_ok=True)
+
+    for entry in os.listdir(data_dir):
+        entry_path = os.path.join(data_dir, entry)
+
+        # Skip non-directories
+        if not os.path.isdir(entry_path):
+            continue
+
+        gff_path = os.path.join(entry_path, "genomic.gff")
+        if os.path.isfile(gff_path):
+            new_name = f"{entry}.gff"
+            dest_path = os.path.join(annotations_dir, new_name)
+            shutil.move(gff_path, dest_path)
+
+            # Remove the now-empty folder
+            if not os.listdir(entry_path):
+                os.rmdir(entry_path)
+        else:
+            print(f"[WARNING] No genomic.gff found in {entry}")
+
+    print(f"[INFO] Annotation file(s) moved to: {annotations_dir}")
 
 
 def main():
@@ -228,17 +304,29 @@ def main():
         focus_id = str(get_focus_id_level(datasets_dict, args.level))
         print(f"[INFO] The requested level ({args.level}) taxon id is {focus_id}")
 
+    # Make sure there are at least one annotation available for the focus id
     annotations_count = get_annotation_count(focus_id)
     print(f"[INFO] {annotations_count} annotations found. Downloading them!")
 
+    # Download from NCBI
     zip_path = download_annotation(
         focus_id,
         annotations_dir=args.output,
         zip_name=f"{focus_id}_ncbi_dataset.zip",
     )
-    download_location = extract_annotation_zip(zip_path)
 
-    print(f"[INFO] Annotations and metadata saved in {download_location}")
+    # extract and reorg
+    download_location = extract_annotation_zip(zip_path)
+    flatten_and_rename_gff(download_location)
+    generate_assembly_report(download_location)
+    build_annotation_report(download_location)
+    
+    # clean up
+    shutil.rmtree(os.path.join(download_location, "ncbi_dataset"))
+    os.remove(os.path.join(download_location, "md5sum.txt"))
+    os.remove(os.path.join(download_location, "README.md"))
+    
+    print(f"[INFO] Done, results saved in {download_location}")
 
 
 if __name__ == "__main__":
