@@ -2,7 +2,7 @@
 
 # Check for input arguments
 if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <gff_file> <genome_size_in_bp>"
+    echo "Usage: $0 <gff_file> <fasta_file/genome_size_in_bp>"
     exit 1
 fi
 
@@ -10,32 +10,35 @@ fi
 gff_file="$1"
 genome="$2"
 
-# Size is computed removing contig names, counting charachters and subtracting lines (\n)
-genome_size_bp=$(awk '{print $2 - $1}' < <(grep -v '^>' $genome | wc -l -c))
+# Determine if the second argument is a file or a number
+if [ -f "$genome" ]; then
+    # Remove headers, count characters, subtract newline count
+    genome_size_bp=$(awk '{print $2 - $1}' < <(grep -v '^>' "$genome" | wc -l -c))
+elif [[ "$genome" =~ ^[0-9]+$ ]]; then
+    genome_size_bp="$genome"
+else
+    echo "Error: Second argument must be a FASTA file or a genome size in base pairs."
+    exit 1
+fi
+
 
 # Function to calculate feature stats
 calculate_feature_stats() {
-    awk -F'\t' '!/^#/ {
+    awk -F'\t' -v genome_size="$genome_size_bp" '!/^#/ {
         feature_type = $3
         start = $4
         end = $5
         feature_length = end - start + 1
 
-        # Increment the count and total length for this feature type
         count[feature_type]++
         total_length[feature_type] += feature_length
     } END {
-       
-        # Print the header inside awk
         print "Feature\tFeatures_Count\tTotal_Feature_Length\tAverage_Feature_Length\tGenome_Percentage"
-        
-        # Print the results for each feature type in a single line, comma-separated
+
         for (feature in count) {
             avg_length = total_length[feature] / count[feature]
-            feature_density_ft = (total_length[feature] / '"$genome_size_bp"') * 100
-            
-            # Print in CSV format: Feature, Total Features, Average Feature Length, Genome Percentage
-            printf "%s\t%d\t%d\t%.2f\t%.2f\n", feature, count[feature], total_length[feature], avg_length, feature_density_ftMb
+            feature_density = (total_length[feature] / genome_size) * 100
+            printf "%s\t%d\t%d\t%.2f\t%.2f\n", feature, count[feature], total_length[feature], avg_length, feature_density
         }
     }'
 }
