@@ -5,3 +5,4 @@ annotations_ncbi
 .DS_Store
 *.log
 *.out
+.virtual_documents
