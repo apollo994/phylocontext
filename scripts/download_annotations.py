@@ -11,17 +11,25 @@ import zipfile
 import pandas as pd
 
 
-def get_dataset_json(tax_id):
+def get_dataset_json(tax_id, children=False):
 
+    '''
+    By default the dictionary contains one key which is tax_id.
+    When children is true, it returns a dictionary of as many keys
+    of children available for taxid.
+    '''
+    
     datasets_command = [
         "datasets",
         "summary",
         "taxonomy",
         "taxon",
-        tax_id,
-        "--children",
+        str(tax_id),
         "--as-json-lines",
     ]
+
+    if children:
+        datasets_command.append("--children")
 
     try:
         datasets_answer = subprocess.run(
@@ -37,7 +45,10 @@ def get_dataset_json(tax_id):
         sys.exit(1)
 
     # Load JSON
-    datasets_json = json.loads(datasets_answer.stdout)
+    datasets_json = {
+        str(json.loads(line)["taxonomy"]["tax_id"]): json.loads(line)
+        for line in datasets_answer.stdout.strip().splitlines()
+    }
 
     return datasets_json
 
@@ -294,14 +305,16 @@ def main():
     ### Main body ##################################################################
 
     datasets_dict = get_dataset_json(args.taxid)
+    input_species_dict = datasets_dict[args.taxid]    
+
     print(f"[INFO] Fetched information for taxon {args.taxid}")
 
     # Focus id is the taxon id to download annotations
     if args.rank is not None:
-        focus_id = str(get_focus_id_rank(datasets_dict, args.rank))
+        focus_id = str(get_focus_id_rank(input_species_dict, args.rank))
         print(f"[INFO] The requested {args.rank} taxon id is {focus_id}")
     else:
-        focus_id = str(get_focus_id_level(datasets_dict, args.level))
+        focus_id = str(get_focus_id_level(input_species_dict, args.level))
         print(f"[INFO] The requested level ({args.level}) taxon id is {focus_id}")
 
     # Make sure there are at least one annotation available for the focus id
@@ -315,6 +328,8 @@ def main():
         zip_name=f"{focus_id}_ncbi_dataset.zip",
     )
 
+    # Add phylogeny info
+
     # extract and reorg
     download_location = extract_annotation_zip(zip_path)
     flatten_and_rename_gff(download_location)
@@ -324,6 +339,7 @@ def main():
     # clean up
     shutil.rmtree(os.path.join(download_location, "ncbi_dataset"))
     os.remove(os.path.join(download_location, "md5sum.txt"))
+    os.remove(os.path.join(download_location, "assembly_report.tsv"))
     os.remove(os.path.join(download_location, "README.md"))
     
     print(f"[INFO] Done, results saved in {download_location}")
