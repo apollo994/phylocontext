@@ -99,7 +99,6 @@ def main():
         run_ministats(annotation_path, genome_size, target)
 
     print(f"[INFO] Ministats saved at {output_dir}")
-    print()
 
 
 if __name__ == "__main__":
