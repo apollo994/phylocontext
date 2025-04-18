@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 from datetime import datetime
+
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -92,7 +93,6 @@ def plot_BUSCO(df, target):
     ax.legend(title="Category", bbox_to_anchor=(1.05, 1), loc="upper left")
 
     plt.tight_layout()
-    plt.show()
 
     # Saving
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -101,23 +101,33 @@ def plot_BUSCO(df, target):
 
     return 0
 
+
 def plot_annotations_info(df, target):
 
-    table_df = df[['Organism_Name','Organism_Taxonomic_ID','Annotation_Method', 
-                   'Annotation_Provider', 'Annotation_Release_Date']].copy()
+    table_df = df[
+        [
+            "Organism_Name",
+            "Organism_Taxonomic_ID",
+            "Annotation_Method",
+            "Annotation_Provider",
+            "Annotation_Release_Date",
+        ]
+    ].copy()
     table_df.reset_index(drop=True, inplace=True)
-    
+
     # Create the figure — height scales with number of rows
-    fig, ax = plt.subplots(figsize=(18, len(table_df) * 0.5))  # Adjust width/height as needed
-    
-    ax.axis('off')  # Hide plot axes
-    
+    fig, ax = plt.subplots(
+        figsize=(18, len(table_df) * 0.5)
+    )  # Adjust width/height as needed
+
+    ax.axis("off")  # Hide plot axes
+
     # Create table
     table = plt.table(
         cellText=table_df.values,
         colLabels=table_df.columns,
-        loc='center',
-        cellLoc='left'
+        loc="center",
+        cellLoc="left",
     )
 
     # Formatting for readability
@@ -134,49 +144,54 @@ def plot_annotations_info(df, target):
 
     return 0
 
+
 def plot_assembly_stats(df, target):
 
     variables = [
-        'Assembly_Stats_Total_Sequence_Length',
-        'Assembly_Stats_GC_Percent',
-        'Assembly_Stats_Total_Number_of_Chromosomes',
-        'Assembly_Stats_Number_of_Contigs',
-        'Assembly_Stats_Contig_L50',
-        'Assembly_Stats_Contig_N50',
-        'Assembly_Stats_Number_of_Scaffolds',
-        'Assembly_Stats_Scaffold_L50',
-        'Assembly_Stats_Scaffold_N50'
+        "Assembly_Stats_Total_Sequence_Length",
+        "Assembly_Stats_GC_Percent",
+        "Assembly_Stats_Total_Number_of_Chromosomes",
+        "Assembly_Stats_Number_of_Contigs",
+        "Assembly_Stats_Contig_L50",
+        "Assembly_Stats_Contig_N50",
+        "Assembly_Stats_Number_of_Scaffolds",
+        "Assembly_Stats_Scaffold_L50",
+        "Assembly_Stats_Scaffold_N50",
     ]
-    
+
     # Reshape to long format for seaborn
-    plot_df = df[['Organism_Name'] + variables].copy()
-    plot_df = plot_df.melt(id_vars='Organism_Name', value_vars=variables,
-                           var_name='Metric', value_name='Value')
-    plot_df['Metric'] = plot_df['Metric'].str.replace('Assembly_Stats_', '')
-    
+    plot_df = df[["Organism_Name"] + variables].copy()
+    plot_df = plot_df.melt(
+        id_vars="Organism_Name",
+        value_vars=variables,
+        var_name="Metric",
+        value_name="Value",
+    )
+    plot_df["Metric"] = plot_df["Metric"].str.replace("Assembly_Stats_", "")
+
     # Create FacetGrid using catplot
     g = sns.catplot(
         data=plot_df,
-        kind='bar',
-        x='Value',
-        y='Organism_Name',
-        hue='Organism_Name',
-        col='Metric',
+        kind="bar",
+        x="Value",
+        y="Organism_Name",
+        hue="Organism_Name",
+        col="Metric",
         col_wrap=3,
         height=4,
         aspect=1.5,
         sharey=True,
         sharex=False,
     )
-    
+
     # Improve formatting
     g.set_titles("{col_name}")
     g.set_axis_labels("Value", "")
-    g.set(xscale='linear')
+    g.set(xscale="linear")
     for ax in g.axes.flatten():
-        ax.grid(True, axis='x', linestyle='--', alpha=0.3)
-        ax.tick_params(axis='y', labelsize=12)
-    
+        ax.grid(True, axis="x", linestyle="--", alpha=0.3)
+        ax.tick_params(axis="y", labelsize=12)
+
     plt.tight_layout()
 
     # Saving
@@ -190,44 +205,46 @@ def plot_assembly_stats(df, target):
 def plot_gene_stats(df, target):
 
     count_vars = [
-        'Annotation_Count_Gene_Non-coding',
-        'Annotation_Count_Gene_Protein-coding',
-        'Annotation_Count_Gene_Pseudogene',
-        'Annotation_Count_Gene_Total'
+        "Annotation_Count_Gene_Non-coding",
+        "Annotation_Count_Gene_Protein-coding",
+        "Annotation_Count_Gene_Pseudogene",
+        "Annotation_Count_Gene_Total",
     ]
-    
+
     # Prepare data and melt into long format
-    plot_df = df[['Organism_Name'] + count_vars].copy()
+    plot_df = df[["Organism_Name"] + count_vars].copy()
     plot_df = plot_df.melt(
-        id_vars='Organism_Name',
+        id_vars="Organism_Name",
         value_vars=count_vars,
-        var_name='Metric',
-        value_name='Value'
+        var_name="Metric",
+        value_name="Value",
     )
-    
+
     # Clean up 'Metric' labels
-    plot_df['Metric'] = plot_df['Metric'].str.replace('Annotation_Count_Gene_', '', regex=False)
-    
+    plot_df["Metric"] = plot_df["Metric"].str.replace(
+        "Annotation_Count_Gene_", "", regex=False
+    )
+
     # Create the multi-panel plot
     g = sns.catplot(
         data=plot_df,
-        kind='bar',                  
-        x='Value',
-        y='Organism_Name',
-        hue = 'Organism_Name',
-        col='Metric',
-        col_wrap=2,                  
+        kind="bar",
+        x="Value",
+        y="Organism_Name",
+        hue="Organism_Name",
+        col="Metric",
+        col_wrap=2,
         sharey=True,
         height=4,
         aspect=1.5,
     )
-    
+
     g.set_titles("{col_name}")
     g.set_axis_labels("Gene count", "")
     for ax in g.axes.flatten():
-        ax.grid(True, axis='x', linestyle='--', alpha=0.3)
-        ax.tick_params(axis='y', labelsize=8)
-    
+        ax.grid(True, axis="x", linestyle="--", alpha=0.3)
+        ax.tick_params(axis="y", labelsize=8)
+
     plt.tight_layout()
 
     # Saving
@@ -237,28 +254,28 @@ def plot_gene_stats(df, target):
 
     return 0
 
+
 def plot_assembly_gaps(df, target):
 
-    x_var = 'Assembly_Stats_Total_Sequence_Length'
-    y_var = 'Assembly_Stats_Total_Ungapped_Length'
-    
-    sns.scatterplot(data = df, 
-                    x = x_var,
-                    y = y_var,
-                    hue = 'Organism_Name')
-    
-    plt.xlabel(x_var.replace('Assembly_Stats_', '').replace('_', ' '))
-    plt.ylabel(y_var.replace('Assembly_Stats_', '').replace('_', ' '))
-    
+    x_var = "Assembly_Stats_Total_Sequence_Length"
+    y_var = "Assembly_Stats_Total_Ungapped_Length"
+
+    sns.scatterplot(data=df, x=x_var, y=y_var, hue="Organism_Name")
+
+    plt.xlabel(x_var.replace("Assembly_Stats_", "").replace("_", " "))
+    plt.ylabel(y_var.replace("Assembly_Stats_", "").replace("_", " "))
+
     shortest = df[y_var].min()
     longest = df[x_var].max()
-    plt.plot([shortest, longest],
-             [shortest, longest],
-             ls = '--',
-             linewidth=1,
-             c = 'black',
-             alpha = 0.5)
-    
+    plt.plot(
+        [shortest, longest],
+        [shortest, longest],
+        ls="--",
+        linewidth=1,
+        c="black",
+        alpha=0.5,
+    )
+
     for _, row in df.iterrows():
         x = row[x_var]
         y = row[y_var]
@@ -266,7 +283,7 @@ def plot_assembly_gaps(df, target):
             x + 0.01 * x,  # offset slightly to the right
             y,
             f"[gaps = {int(x) - int(y)}]",
-            fontsize=7
+            fontsize=7,
         )
 
     # Saving
@@ -275,7 +292,6 @@ def plot_assembly_gaps(df, target):
     plt.savefig(filename, dpi=300, bbox_inches="tight")
 
     return 0
-
 
 
 def main():
@@ -310,16 +326,14 @@ def main():
 
     df = pd.read_csv(args.report, sep="\t")
     df = df.rename(columns={col: col.replace(" ", "_") for col in df.columns})
-    
+
     plot_BUSCO(df, output_dir)
     plot_annotations_info(df, output_dir)
     plot_assembly_stats(df, output_dir)
     plot_gene_stats(df, output_dir)
-    plot_assembly_gaps(def, output_dir)
-
+    plot_assembly_gaps(df, output_dir)
 
     print(f"[info] Plots saved at {output_dir}")
-    print()
 
 
 if __name__ == "__main__":
