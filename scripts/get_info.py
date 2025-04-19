@@ -176,7 +176,6 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
 
         annotation_count_ref = get_annotation_count(pid_str)
         annotation_count_all = get_annotation_count(pid_str, all=True)
-        #pid_dict = get_dataset_json(pid)
         pid_dict = children_dataset_dict[pid_str]
 
         taxonomy = pid_dict.get("taxonomy", {})
