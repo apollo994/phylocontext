@@ -7,7 +7,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-
 import pandas as pd
 import tabulate
 
@@ -53,7 +52,7 @@ def get_dataset_json(tax_id, children=False):
     return datasets_json
 
 
-def get_annotation_count(focus_level):
+def get_annotation_count(focus_level, all=False):
 
     datasets_command = [
         "datasets",
@@ -63,10 +62,13 @@ def get_annotation_count(focus_level):
         focus_level,
         "--include",
         "gff3",
-#        "--reference",
         "--preview",
+        "--annotated",
     ]
 
+    if not all:
+        datasets_command.append('--reference')
+        
     try:
         datasets_answer = subprocess.run(
             datasets_command,
@@ -173,7 +175,8 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
     for pid in reversed(selected_parents):  # Closest parent first
         pid_str = str(pid)
 
-        annotation_count = get_annotation_count(pid_str)
+        annotation_count_ref = get_annotation_count(pid_str)
+        annotation_count_all = get_annotation_count(pid_str, all=True)
         #pid_dict = get_dataset_json(pid)
         pid_dict = children_dataset_dict[pid_str]
 
@@ -192,7 +195,8 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
                 "rank": rank,
                 "name": name,
                 "taxon_id": pid_str,
-                "annotation_count": annotation_count,
+                "annotation_count_ref": annotation_count_ref,
+                "annotation_count_all": annotation_count_all,
                 "assembly_count": assembly_count,
                 "species_count": species_count[pid_str],
             }
