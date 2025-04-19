@@ -125,8 +125,7 @@ def report_annotation_counts_by_rank(datasets_dict):
     lineage = datasets_dict["taxonomy"]["classification"]
 
     report = []
-    ranks = ["SPECIES", "GENUS", "FAMILY"]
-    # ranks = ['SPECIES', 'GENUS', 'FAMILY', 'ORDER', 'CLASS', 'PHYLUM', 'KINGDOM']
+    ranks = ['SPECIES', 'GENUS', 'FAMILY', 'ORDER', 'CLASS', 'PHYLUM', 'KINGDOM']
 
     for rank in ranks:
         rank_lower = rank.lower()
@@ -261,6 +260,7 @@ def main():
     input_species_dict = datasets_dict[args.taxid]
 
     if args.extended is not None:
+        print ("[INFO] High -e values may require long time to compute")
         report = report_annotation_counts_by_parents(input_species_dict, args.extended)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"{args.taxid}_infoEXT_{timestamp}.tsv"
