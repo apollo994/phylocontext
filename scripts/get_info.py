@@ -52,7 +52,7 @@ def get_dataset_json(tax_id, children=False):
     return datasets_json
 
 
-def get_annotation_count(focus_level, all=False):
+def get_annotation_count(focus_level, all=False, accept_zero=False):
 
     datasets_command = [
         "datasets",
@@ -67,8 +67,8 @@ def get_annotation_count(focus_level, all=False):
     ]
 
     if not all:
-        datasets_command.append('--reference')
-        
+        datasets_command.append("--reference")
+
     try:
         datasets_answer = subprocess.run(
             datasets_command,
@@ -79,17 +79,25 @@ def get_annotation_count(focus_level, all=False):
         )
 
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to run datasets command: {e}", file=sys.stderr)
+        if accept_zero and "no genome data is currently available" in e.stderr:
+            return 0
+        else:
+            print(f"[ERROR] Failed to run datasets command:\n{e.stderr}", file=sys.stderr)
+            sys.exit(1)
+
+    try:
+        datasets_json = json.loads(datasets_answer.stdout)
+        annotations_count = datasets_json["included_data_files"]["genome_gff"]["file_count"]
+    except Exception as e:
+        print(f"[ERROR] Failed to parse datasets output: {e}", file=sys.stderr)
         sys.exit(1)
 
-    datasets_json = json.loads(datasets_answer.stdout)
-    annotations_count = datasets_json["included_data_files"]["genome_gff"]["file_count"]
-
-    if annotations_count < 1:
+    if annotations_count < 1 and not accept_zero:
         print("[ERROR] No annotations found. Try higher level or rank")
         sys.exit(1)
-    else:
-        return annotations_count
+
+    return annotations_count
+
 
 
 def get_species_count(children_dataset_dict, parents_id_list):
@@ -129,11 +137,7 @@ def report_annotation_counts_by_rank(datasets_dict):
         taxon_id = str(taxon_info["id"])
         taxon_name = taxon_info["name"]
 
-        try:
-            count = get_annotation_count(taxon_id)
-        except SystemExit:
-            count = "NA"
-
+        count = get_annotation_count(taxon_id, accept_zero=True)
         report.append(
             {
                 "rank": rank,
@@ -152,6 +156,8 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
 
     parent_info = []
 
+    input_taxid = datasets_dict['taxonomy']['tax_id']
+
     # Get lineage
     parent_ids = datasets_dict["taxonomy"].get("parents", [])
     parent_ids = [str(i) for i in parent_ids]
@@ -166,16 +172,21 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
         print(
             f"[WARNING] Only {len(parent_ids)} parent taxa available (less than {max_parents})"
         )
-
+    
     # get species count for each parent, use the highest level
     children_dataset_dict = get_dataset_json(selected_parents[0], children=True)
     species_count = get_species_count(children_dataset_dict, selected_parents)
+    
+    # Add species taxid as is required for annotaion count
+    selected_parents.append(input_taxid)
+    # Add artificial 1 to species count, this do not accout for subspecies
+    species_count[str(input_taxid)] = 1
 
     for pid in reversed(selected_parents):  # Closest parent first
         pid_str = str(pid)
 
-        annotation_count_ref = get_annotation_count(pid_str)
-        annotation_count_all = get_annotation_count(pid_str, all=True)
+        annotation_count_ref = get_annotation_count(pid_str, accept_zero=True)
+        annotation_count_all = get_annotation_count(pid_str, all=True, accept_zero=True)
         pid_dict = children_dataset_dict[pid_str]
 
         taxonomy = pid_dict.get("taxonomy", {})
@@ -183,7 +194,7 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
 
         # Get assembly count
         assembly_count = next(
-            (c["count"] for c in counts if c["type"] == "COUNT_TYPE_ASSEMBLY"), "NA"
+            (c["count"] for c in counts if c["type"] == "COUNT_TYPE_ASSEMBLY"), 0
         )
         rank = taxonomy.get("rank", "").upper()
         name = taxonomy.get("current_scientific_name", {}).get("name", "")
@@ -262,8 +273,9 @@ def main():
 
     print()
     print(tabulate.tabulate(report, headers="keys"))
+    print("(Subspecies are ignored in species count)")
     print()
-
+    
     # Check if that exact file exists
     if os.path.exists(output_path):
         print(f"[ERROR] Output file already exists: {output_path}")
