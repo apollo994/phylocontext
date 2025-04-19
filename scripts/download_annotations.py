@@ -136,6 +136,7 @@ def download_annotation(
         "--include",
         "gff3",
         "--reference",
+        "--annotated",
         "--filename",
         output_path,
     ]
@@ -179,7 +180,7 @@ def extract_annotation_zip(zip_path, extract_to=None):
     return extract_to
 
 
-def generate_assembly_report(base_folder):
+def build_assembly_report(base_folder):
     """
     Converts assembly_data_report.jsonl to TSV using `dataformat` CLI
     and writes the result to assembly_report.csv in base_folder.
@@ -336,7 +337,7 @@ def main():
     # extract and reorg
     download_location = extract_annotation_zip(zip_path)
     flatten_and_rename_gff(download_location)
-    generate_assembly_report(download_location)
+    build_assembly_report(download_location)
     build_annotation_report(download_location)
     
     # clean up
