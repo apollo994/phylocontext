@@ -1,6 +1,5 @@
 # phylocontext
-Contextualize genome annotation summary statistics
-
+Provide phylogenetic context to genome annotations
 
 ### Todo
 - add conda enviorment
