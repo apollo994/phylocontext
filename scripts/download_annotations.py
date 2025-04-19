@@ -73,7 +73,7 @@ def get_focus_id_level(datasets_dict, level):
     return level_id
 
 
-def get_annotation_count(focus_level):
+def get_annotation_count(focus_level, all=False):
 
     datasets_command = [
         "datasets",
@@ -83,10 +83,13 @@ def get_annotation_count(focus_level):
         focus_level,
         "--include",
         "gff3",
-        "--reference",
         "--preview",
+        "--annotated",
     ]
 
+    if not all:
+        datasets_command.append('--reference')
+        
     try:
         datasets_answer = subprocess.run(
             datasets_command,
