@@ -109,7 +109,6 @@ def get_species_count(children_dataset_dict, parents_id_list):
             for parent in parents_id_list:
                 if parent in species_parents:
                     species_count_dict[parent] += 1
-    print (species_count_dict)
     return species_count_dict
 
 
@@ -249,7 +248,6 @@ def main():
 
     # Get input taxon dictionary
     datasets_dict = get_dataset_json(args.taxid)
-    print(datasets_dict)
     input_species_dict = datasets_dict[args.taxid]
 
     if args.extended is not None:
