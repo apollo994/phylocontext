@@ -7,18 +7,18 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from io import StringIO
 
 import pandas as pd
 
 
 def get_dataset_json(tax_id, children=False):
-
-    '''
+    """
     By default the dictionary contains one key which is tax_id.
     When children is true, it returns a dictionary of as many keys
     of children available for taxid.
-    '''
-    
+    """
+
     datasets_command = [
         "datasets",
         "summary",
@@ -57,7 +57,7 @@ def get_focus_id_rank(datasets_dict, rank):
 
     rank_id = datasets_dict["taxonomy"]["classification"][rank]["id"]
 
-    return rank_id
+    return str(rank_id)
 
 
 def get_focus_id_level(datasets_dict, level):
@@ -70,10 +70,10 @@ def get_focus_id_level(datasets_dict, level):
         level = 3
     level_id = datasets_dict["taxonomy"]["parents"][-abs(level)]
 
-    return level_id
+    return str(level_id)
 
 
-def get_annotation_count(focus_level, all=False):
+def get_annotation_count(focus_level, all=False, accept_zero=False):
 
     datasets_command = [
         "datasets",
@@ -88,8 +88,8 @@ def get_annotation_count(focus_level, all=False):
     ]
 
     if not all:
-        datasets_command.append('--reference')
-        
+        datasets_command.append("--reference")
+
     try:
         datasets_answer = subprocess.run(
             datasets_command,
@@ -100,17 +100,28 @@ def get_annotation_count(focus_level, all=False):
         )
 
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to run datasets command: {e}", file=sys.stderr)
+        if accept_zero and "no genome data is currently available" in e.stderr:
+            return 0
+        else:
+            print(
+                f"[ERROR] Failed to run datasets command:\n{e.stderr}", file=sys.stderr
+            )
+            sys.exit(1)
+
+    try:
+        datasets_json = json.loads(datasets_answer.stdout)
+        annotations_count = datasets_json["included_data_files"]["genome_gff"][
+            "file_count"
+        ]
+    except Exception as e:
+        print(f"[ERROR] Failed to parse datasets output: {e}", file=sys.stderr)
         sys.exit(1)
 
-    datasets_json = json.loads(datasets_answer.stdout)
-    annotations_count = datasets_json["included_data_files"]["genome_gff"]["file_count"]
-
-    if annotations_count < 1:
+    if annotations_count < 1 and not accept_zero:
         print("[ERROR] No annotations found. Try higher level or rank")
         sys.exit(1)
-    else:
-        return annotations_count
+
+    return annotations_count
 
 
 def download_annotation(
@@ -182,50 +193,111 @@ def extract_annotation_zip(zip_path, extract_to=None):
 
 def build_assembly_report(base_folder):
     """
-    Converts assembly_data_report.jsonl to TSV using `dataformat` CLI
-    and writes the result to assembly_report.csv in base_folder.
+    Converts assembly_data_report.jsonl to a pandas DataFrame using `dataformat` CLI.
     """
     data_dir = os.path.join(base_folder, "ncbi_dataset", "data")
     jsonl_path = os.path.join(data_dir, "assembly_data_report.jsonl")
-    output_path = os.path.join(base_folder, "assembly_report.tsv")
 
     if not os.path.isfile(jsonl_path):
         print(f"[ERROR] Report file not found: {jsonl_path}", file=sys.stderr)
         sys.exit(1)
 
     try:
-        with open(jsonl_path, "r") as infile, open(output_path, "w") as outfile:
-            subprocess.run(
+        with open(jsonl_path, "r") as infile:
+            result = subprocess.run(
                 ["dataformat", "tsv", "genome"],
                 check=True,
                 text=True,
                 stdin=infile,
-                stdout=outfile,
+                capture_output=True,
             )
-        print(f"[INFO] Assembly report saved to: {output_path}")
+        df = pd.read_csv(StringIO(result.stdout), sep="\t")
+        print("[INFO] Assembly report parsed into DataFrame")
+        return df
+
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] dataformat command failed: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-def build_annotation_report(base_folder):
+def build_annotation_report(base_folder, input_taxid, focus_taxid):
+    """
+    Filters the assembly report DataFrame to include only assemblies
+    with available annotations, adds relation to input taxons
+    and saves the filtered result.
+    """
+    annotation_dir = os.path.join(base_folder, "annotations")
+    annotation_report_path = os.path.join(base_folder, "annotation_report.tsv")
 
+    # Get names of annotated assemblies
     assemblies_names = [
-        os.path.splitext(i)[0] for i in os.listdir(f"{base_folder}/annotations/")
+        os.path.splitext(name)[0] for name in os.listdir(annotation_dir)
     ]
-    assembly_report = os.path.join(base_folder, "assembly_report.tsv")
 
-    # define output file
-    annotation_report = os.path.join(base_folder, "annotation_report.tsv")
+    # Load full assembly report into a DataFrame
+    df = build_assembly_report(base_folder)
 
-    df = pd.read_csv(assembly_report, sep="\t")
+    # Filter based on available annotations
     df = df[df["Assembly Accession"].isin(assemblies_names)]
-    df = df.drop_duplicates(subset="Assembly Accession", keep="first") # type: ignore
+    df = df.drop_duplicates(subset="Assembly Accession", keep="first")  # type: ignore
     df = df.dropna(axis=1, how="all")
 
+    df_with_distance = add_taxon_distance(df, input_taxid, focus_taxid)
+
     # Save cleaned report
-    df.to_csv(annotation_report, index=False, sep='\t')
-    print(f"[INFO] Annotation report saved to: {annotation_report}")
+    df_with_distance.to_csv(annotation_report_path, index=False, sep="\t")
+    print(f"[INFO] Annotation report saved to: {annotation_report_path}")
+
+
+def add_taxon_distance(annotation_report, input_taxid, focus_taxid):
+    """
+    take an annotation report and enrich each annotation/assemblyit
+    with distance from the input_taxid.
+    """
+    # An alternative implementation could take a input taxiod and
+    # a list of taxid, but this would require many ncbi API requests
+    # one for each taxon and one for each common ancentor
+    # while knowign the focus taxid allows for a single request
+    
+    print ("[INFO] collecting last common ancestor (lca) information")
+    focus_taxid = str(focus_taxid)
+
+    focus_with_children = get_dataset_json(focus_taxid, children=True)
+    annotations_taxid = annotation_report["Organism Taxonomic ID"].tolist()
+    annotations_taxid = [str(t) for t in annotations_taxid]
+
+    input_taxid_lineage = focus_with_children[input_taxid]["taxonomy"]["parents"]
+    input_taxid_lineage.append(input_taxid)
+    input_taxid_lineage = [str(t) for t in input_taxid_lineage]
+
+    last_common_ancestor = {k: {} for k in annotations_taxid}
+
+    for ann_taxid in annotations_taxid:
+        ann_lineage = focus_with_children[ann_taxid]["taxonomy"]["parents"]
+        ann_lineage = [str(t) for t in ann_lineage]
+
+        for lineage in reversed(input_taxid_lineage):
+            if lineage in ann_lineage: 
+                last_common_ancestor[ann_taxid] = {
+                        "lca_taxid": lineage,
+                        "lca_rank": focus_with_children[lineage]["taxonomy"].get("rank",""),
+                        "lca_name": focus_with_children[lineage]["taxonomy"]
+                        .get("current_scientific_name", {})
+                        .get("name", ""),
+                        "lca_starting_from" : input_taxid, 
+                    }
+                break
+    
+    # Create dataframe
+    lca_df = pd.DataFrame.from_dict(last_common_ancestor, orient="index")
+    lca_df.index.name = "Organism Taxonomic ID"
+    lca_df.reset_index(inplace=True)
+
+    # Ensure matching types for merge
+    annotation_report["Organism Taxonomic ID"] = annotation_report["Organism Taxonomic ID"].astype(str)
+    annotation_report_with_distance = annotation_report.merge(lca_df, on="Organism Taxonomic ID", how="left")
+
+    return annotation_report_with_distance
 
 
 def flatten_and_rename_gff(base_folder):
@@ -309,7 +381,7 @@ def main():
     ### Main body ##################################################################
 
     datasets_dict = get_dataset_json(args.taxid)
-    input_species_dict = datasets_dict[args.taxid]    
+    input_species_dict = datasets_dict[args.taxid]
 
     print(f"[INFO] Fetched information for taxon {args.taxid}")
 
@@ -332,20 +404,18 @@ def main():
         zip_name=f"{focus_id}_ncbi_dataset.zip",
     )
 
-    # Add phylogeny info
-
     # extract and reorg
     download_location = extract_annotation_zip(zip_path)
     flatten_and_rename_gff(download_location)
-    build_assembly_report(download_location)
-    build_annotation_report(download_location)
     
+    # build annotation report with lca info
+    build_annotation_report(download_location, args.taxid, focus_id)
+
     # clean up
     shutil.rmtree(os.path.join(download_location, "ncbi_dataset"))
     os.remove(os.path.join(download_location, "md5sum.txt"))
-    os.remove(os.path.join(download_location, "assembly_report.tsv"))
     os.remove(os.path.join(download_location, "README.md"))
-    
+
     print(f"[INFO] Done, results saved in {download_location}")
 
 
