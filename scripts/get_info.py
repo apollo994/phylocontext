@@ -233,7 +233,7 @@ def main():
         "-o",
         "--output",
         type=str,
-        default="annotation_ncbi",
+        default="annotations_ncbi",
         help="Output folder (default: annotation_ncbi)",
     )
 
