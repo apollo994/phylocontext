@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+
 import pandas as pd
 import tabulate
 
@@ -82,12 +83,16 @@ def get_annotation_count(focus_level, all=False, accept_zero=False):
         if accept_zero and "no genome data is currently available" in e.stderr:
             return 0
         else:
-            print(f"[ERROR] Failed to run datasets command:\n{e.stderr}", file=sys.stderr)
+            print(
+                f"[ERROR] Failed to run datasets command:\n{e.stderr}", file=sys.stderr
+            )
             sys.exit(1)
 
     try:
         datasets_json = json.loads(datasets_answer.stdout)
-        annotations_count = datasets_json["included_data_files"]["genome_gff"]["file_count"]
+        annotations_count = datasets_json["included_data_files"]["genome_gff"][
+            "file_count"
+        ]
     except Exception as e:
         print(f"[ERROR] Failed to parse datasets output: {e}", file=sys.stderr)
         sys.exit(1)
@@ -99,7 +104,6 @@ def get_annotation_count(focus_level, all=False, accept_zero=False):
     return annotations_count
 
 
-
 def get_species_count(children_dataset_dict, parents_id_list):
     """
     Takes a dictionary of taxonomi entries and a list of parents.
@@ -109,7 +113,7 @@ def get_species_count(children_dataset_dict, parents_id_list):
     species_count_dict = {str(k): 0 for k in parents_id_list}
 
     for entry in children_dataset_dict:
-        rank = children_dataset_dict[entry]["taxonomy"].get("rank", '')
+        rank = children_dataset_dict[entry]["taxonomy"].get("rank", "")
 
         if rank == "SPECIES":
             species_parents = children_dataset_dict[entry]["taxonomy"]["parents"]
@@ -121,11 +125,14 @@ def get_species_count(children_dataset_dict, parents_id_list):
 
 
 def report_annotation_counts_by_rank(datasets_dict):
-
+    """
+    Takes a dataset dictionary of a specic taxon and
+    retunr simple statistics
+    """
     lineage = datasets_dict["taxonomy"]["classification"]
-
+    parents = datasets_dict["taxonomy"]["parents"]
     report = []
-    ranks = ['SPECIES', 'GENUS', 'FAMILY', 'ORDER', 'CLASS', 'PHYLUM', 'KINGDOM']
+    ranks = ["SPECIES", "GENUS", "FAMILY", "ORDER", "CLASS", "PHYLUM", "KINGDOM"]
 
     for rank in ranks:
         rank_lower = rank.lower()
@@ -135,11 +142,15 @@ def report_annotation_counts_by_rank(datasets_dict):
         taxon_info = lineage[rank_lower]
         taxon_id = str(taxon_info["id"])
         taxon_name = taxon_info["name"]
+        taxon_level = (
+            list(reversed(parents)).index(int(taxon_id))+1 if rank != "SPECIES" else 0
+        ) # adding one otherise genus would be 0
 
         count = get_annotation_count(taxon_id, accept_zero=True)
         report.append(
             {
                 "rank": rank,
+                "level": taxon_level,
                 "name": taxon_name,
                 "taxon_id": taxon_id,
                 "annotation_count": count,
@@ -155,7 +166,7 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
 
     parent_info = []
 
-    input_taxid = datasets_dict['taxonomy']['tax_id']
+    input_taxid = datasets_dict["taxonomy"]["tax_id"]
 
     # Get lineage
     parent_ids = datasets_dict["taxonomy"].get("parents", [])
@@ -164,26 +175,31 @@ def report_annotation_counts_by_parents(datasets_dict, max_parents=6):
     if not parent_ids:
         print("[ERROR] No parent lineage found.")
         sys.exit(1)
+    
+    if max_parents > 0: # Get last N parents (closest first)
+        selected_parents = parent_ids[-max_parents:]
+        if len(parent_ids) < max_parents:
+            print(
+                f"[WARNING] Only {len(parent_ids)} parent taxa available (less than {max_parents})"
+            )
+        # get species count for each parent, use the highest level
+        children_dataset_dict = get_dataset_json(selected_parents[0], children=True)
+        species_count = get_species_count(children_dataset_dict, selected_parents)
+        # Add species taxid as is required for annotaion count
+        selected_parents.append(str(input_taxid))
+        # Add artificial 1 to species count, this do not accout for subspecies
+        species_count[str(input_taxid)] = 1
+    else: # deal with -e 0 when user only wants information about species 
+        selected_parents = [str(input_taxid)]
+        children_dataset_dict = {str(input_taxid) : datasets_dict}
+        species_count = {str(input_taxid) : 1}
 
-    # Get last N parents (closest first)
-    selected_parents = parent_ids[-max_parents:]
-    if len(parent_ids) < max_parents:
-        print(
-            f"[WARNING] Only {len(parent_ids)} parent taxa available (less than {max_parents})"
-        )
-    
-    # get species count for each parent, use the highest level
-    children_dataset_dict = get_dataset_json(selected_parents[0], children=True)
-    species_count = get_species_count(children_dataset_dict, selected_parents)
-    
-    # Add species taxid as is required for annotaion count
-    selected_parents.append(input_taxid)
-    # Add artificial 1 to species count, this do not accout for subspecies
-    species_count[str(input_taxid)] = 1
+    print (f"[INFO] Reporting info for {selected_parents}")
+    if len(selected_parents) > 5:
+        print("[INFO] High -e values may require long time to compute")
 
     for pid in reversed(selected_parents):  # Closest parent first
         pid_str = str(pid)
-
         annotation_count_ref = get_annotation_count(pid_str, accept_zero=True)
         annotation_count_all = get_annotation_count(pid_str, all=True, accept_zero=True)
         pid_dict = children_dataset_dict[pid_str]
@@ -260,10 +276,9 @@ def main():
     input_species_dict = datasets_dict[args.taxid]
 
     if args.extended is not None:
-        print ("[INFO] High -e values may require long time to compute")
         report = report_annotation_counts_by_parents(input_species_dict, args.extended)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"{args.taxid}_infoEXT_{timestamp}.tsv"
+        output_filename = f"{args.taxid}_infoEXT{args.extended}_{timestamp}.tsv"
         output_path = os.path.join(args.output, output_filename)
     else:
         report = report_annotation_counts_by_rank(input_species_dict)
@@ -275,7 +290,7 @@ def main():
     print(tabulate.tabulate(report, headers="keys"))
     print("(Subspecies are ignored in species count)")
     print()
-    
+
     # Check if that exact file exists
     if os.path.exists(output_path):
         print(f"[ERROR] Output file already exists: {output_path}")
