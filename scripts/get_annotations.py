@@ -10,6 +10,7 @@ import zipfile
 from io import StringIO
 
 import pandas as pd
+import utils.ncbi_plots as ncbi_plots
 
 
 def get_dataset_json(tax_id, children=False):
@@ -226,8 +227,8 @@ def build_annotation_report(base_folder, input_taxid, focus_taxid):
     with available annotations, adds relation to input taxons
     and saves the filtered result.
     """
-    annotation_dir = os.path.join(base_folder, "annotations")
-    annotation_report_path = os.path.join(base_folder, "annotation_report.tsv")
+    annotation_dir = os.path.join(base_folder, "annotations_ncbi")
+    annotation_report_path = os.path.join(base_folder, "annotations_report.tsv")
 
     # Get names of annotated assemblies
     assemblies_names = [
@@ -241,12 +242,16 @@ def build_annotation_report(base_folder, input_taxid, focus_taxid):
     df = df[df["Assembly Accession"].isin(assemblies_names)]
     df = df.drop_duplicates(subset="Assembly Accession", keep="first")  # type: ignore
     df = df.dropna(axis=1, how="all")
+    df = df.rename(columns={col: col.replace(" ", "_") for col in df.columns})
 
+    # Add ancestor info
     df_with_distance = add_taxon_distance(df, input_taxid, focus_taxid)
 
     # Save cleaned report
     df_with_distance.to_csv(annotation_report_path, index=False, sep="\t")
     print(f"[INFO] Annotation report saved to: {annotation_report_path}")
+
+    return df_with_distance
 
 
 def add_taxon_distance(annotation_report, input_taxid, focus_taxid):
@@ -258,12 +263,12 @@ def add_taxon_distance(annotation_report, input_taxid, focus_taxid):
     # a list of taxid, but this would require many ncbi API requests
     # one for each taxon and one for each common ancentor
     # while knowign the focus taxid allows for a single request
-    
-    print ("[INFO] collecting last common ancestor (lca) information")
+
+    print("[INFO] Collecting last common ancestor (lca) information")
     focus_taxid = str(focus_taxid)
 
     focus_with_children = get_dataset_json(focus_taxid, children=True)
-    annotations_taxid = annotation_report["Organism Taxonomic ID"].tolist()
+    annotations_taxid = annotation_report["Organism_Taxonomic_ID"].tolist()
     annotations_taxid = [str(t) for t in annotations_taxid]
 
     input_taxid_lineage = focus_with_children[input_taxid]["taxonomy"]["parents"]
@@ -277,25 +282,31 @@ def add_taxon_distance(annotation_report, input_taxid, focus_taxid):
         ann_lineage = [str(t) for t in ann_lineage]
 
         for lineage in reversed(input_taxid_lineage):
-            if lineage in ann_lineage: 
+            if lineage in ann_lineage:
                 last_common_ancestor[ann_taxid] = {
-                        "lca_taxid": lineage,
-                        "lca_rank": focus_with_children[lineage]["taxonomy"].get("rank",""),
-                        "lca_name": focus_with_children[lineage]["taxonomy"]
-                        .get("current_scientific_name", {})
-                        .get("name", ""),
-                        "lca_starting_from" : input_taxid, 
-                    }
+                    "lca_taxid": lineage,
+                    "lca_rank": focus_with_children[lineage]["taxonomy"].get(
+                        "rank", ""
+                    ),
+                    "lca_name": focus_with_children[lineage]["taxonomy"]
+                    .get("current_scientific_name", {})
+                    .get("name", ""),
+                    "lca_starting_from": input_taxid,
+                }
                 break
-    
+
     # Create dataframe
     lca_df = pd.DataFrame.from_dict(last_common_ancestor, orient="index")
-    lca_df.index.name = "Organism Taxonomic ID"
+    lca_df.index.name = "Organism_Taxonomic_ID"
     lca_df.reset_index(inplace=True)
 
     # Ensure matching types for merge
-    annotation_report["Organism Taxonomic ID"] = annotation_report["Organism Taxonomic ID"].astype(str)
-    annotation_report_with_distance = annotation_report.merge(lca_df, on="Organism Taxonomic ID", how="left")
+    annotation_report["Organism_Taxonomic_ID"] = annotation_report[
+        "Organism_Taxonomic_ID"
+    ].astype(str)
+    annotation_report_with_distance = annotation_report.merge(
+        lca_df, on="Organism_Taxonomic_ID", how="left"
+    )
 
     return annotation_report_with_distance
 
@@ -306,7 +317,7 @@ def flatten_and_rename_gff(base_folder):
     into a subfolder called 'annotations', renaming them to their assembly name.
     """
     data_dir = os.path.join(base_folder, "ncbi_dataset", "data")
-    annotations_dir = os.path.join(base_folder, "annotations")
+    annotations_dir = os.path.join(base_folder, "annotations_ncbi")
 
     if not os.path.isdir(data_dir):
         print(f"[ERROR] Expected data directory not found: {data_dir}")
@@ -401,15 +412,27 @@ def main():
     zip_path = download_annotation(
         focus_id,
         annotations_dir=args.output,
-        zip_name=f"{focus_id}_ncbi_dataset.zip",
+        zip_name=f"{args.taxid}_to_{focus_id}_ncbi_dataset.zip",
     )
 
     # extract and reorg
     download_location = extract_annotation_zip(zip_path)
     flatten_and_rename_gff(download_location)
-    
+
     # build annotation report with lca info
-    build_annotation_report(download_location, args.taxid, focus_id)
+    ann_df = build_annotation_report(download_location, args.taxid, focus_id)
+
+    # make plots
+    plots_dir = os.path.join(download_location, "annotations_report_plots")
+    os.makedirs(plots_dir)
+
+    ncbi_plots.plot_BUSCO(ann_df, plots_dir)
+    ncbi_plots.plot_annotations_info(ann_df, plots_dir)
+    ncbi_plots.plot_assembly_stats(ann_df, plots_dir)
+    ncbi_plots.plot_gene_stats(ann_df, plots_dir)
+    ncbi_plots.plot_assembly_gaps(ann_df, plots_dir)
+
+    print(f"[info] Plots saved at {plots_dir}")
 
     # clean up
     shutil.rmtree(os.path.join(download_location, "ncbi_dataset"))
