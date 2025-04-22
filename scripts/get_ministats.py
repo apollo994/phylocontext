@@ -10,7 +10,7 @@ import pandas as pd
 def get_assembly_metadata(metadata):
 
     df = pd.read_csv(metadata, sep="\t")
-    assembly_dict = df.set_index("Assembly Accession").to_dict(orient="index")
+    assembly_dict = df.set_index("Assembly_Accession").to_dict(orient="index")
 
     return assembly_dict
 
@@ -88,7 +88,7 @@ def main():
     for a in annotation_list:
         assembly_name, _ = os.path.splitext(a)
         genome_size = annotation_metadata[assembly_name][
-            "Assembly Stats Total Sequence Length"
+            "Assembly_Stats_Total_Sequence_Length"
         ]
         if genome_size is None:
             print(f"[WARNING] No metadata found for {a}, skipping.")
