@@ -78,6 +78,24 @@ options:
 ##### Example
 ```
 # Download all the annotations related to taxon 6669 up to the rank class 
-aython scripts/get_annotations.py -t 6669 -l 7
-```
+python scripts/get_annotations.py -t 6669 -l 7
 
+# The command will generate the following folder strunctures
+
+annotations_ncbi
+└── 6669_to_6658_ncbi_dataset
+    ├── annotations_ncbi
+    │   ├── GCA_013167095.2.gff
+    │   ├── GCF_020631705.1.gff
+    │   ├── GCF_021134715.1.gff
+    │   ├── GCF_021234035.1.gff
+    │   ├── GCF_022539665.2.gff
+    │   └── GCF_032884065.1.gff
+    ├── annotations_report_plots
+    │   ├── 250421_2034_assembly_gaps.png
+    │   ├── 250421_2034_assembly_stats.png
+    │   ├── 250421_2034_BUSCO.png
+    │   ├── 250421_2034_gene_stats.png
+    │   └── 250421_2034_summary_table.png
+    └── annotations_report.tsv
+```
