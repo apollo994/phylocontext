@@ -1,8 +1,8 @@
 # phylocontext
 Provide phylogenetic context to genome annotations
 
-### What about annotations in close species?
-The goal of this projects is to obtain genome annotations from organisms related to a species of interest. This task is particularly usefull in the context of genome annotation and comparative genomics. This program relies on `datasets` and `dataformat` CLI form [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/) to facilitate the download of the annotations. Specie are generally refered as their ncbi taxonomy identifier.
+### Obtain annotations frome related species
+The goal of this projects is to obtain genome annotations from organisms related to a species of interest. This task is particularly usefull in the context of genome annotation and comparative genomics. This program relies on `datasets` and `dataformat` CLI form [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/) to facilitate the download of the annotations. Species are generally refered as their ncbi taxonomy identifier.
 
 This project is currently under development. 
 
@@ -34,13 +34,34 @@ options:
 # basic information for taxon 6669
 python scripts/get_info.py -t 6669
 
+| rank    | level | name          | taxon_id | annotation_count |
+|---------|-------|---------------|----------|------------------|
+| SPECIES | 0     | Daphnia pulex | 6669     | 1                |
+| GENUS   | 1     | Daphnia       | 6668     | 5                |
+| FAMILY  | 2     | Daphniidae    | 77658    | 5                |
+| ORDER   | 5     | Diplostraca   | 84337    | 5                |
+| CLASS   | 7     | Branchiopoda  | 6658     | 6                |
+| PHYLUM  | 11    | Arthropoda    | 6656     | 485              |
+| KINGDOM | 17    | Metazoa       | 33208    | 1757             |
+
+
 # adding -e (extended) and the number of parents level to check returns a more detailed report
 python scripts/get_info.py -t 6669 -e 7
 
+| rank       | name          | taxon_id | annotation_count_ref | annotation_count_all | assembly_count | species_count |
+|------------|---------------|----------|----------------------|----------------------|----------------|---------------|
+| SPECIES    | Daphnia pulex | 6669     | 1                    | 2                    | 7              | 1             |
+| GENUS      | Daphnia       | 6668     | 5                    | 9                    | 26             | 251           |
+| FAMILY     | Daphniidae    | 77658    | 5                    | 9                    | 28             | 635           |
+| INFRAORDER | Anomopoda     | 116561   | 5                    | 9                    | 29             | 1370          |
+| SUBORDER   | Cladocera     | 6665     | 5                    | 9                    | 29             | 1594          |
+| ORDER      | Diplostraca   | 84337    | 5                    | 9                    | 31             | 1964          |
+| SUBCLASS   | Phyllopoda    | 116557   | 5                    | 9                    | 41             | 2214          |
+| CLASS      | Branchiopoda  | 6658     | 6                    | 11                   | 51             | 2494          |
 ```
 
 #### Download annotations
-This triggers the download of all the annotations available for organisms close to the species of interest. It aslo generates a report and plots with with informations about the downloaded annotation and relative assemblies. 
+This triggers the download of all the annotations available for organisms close to the species of interest. It aslo generates a report and [plots](examples/annotations_report_plots/) with with informations about the downloaded annotation and relative assemblies. 
 ```
 python scripts/get_annotations.py --help
 usage: get_annotations.py [-h] -t TAXID [-o OUTPUT] [-l LEVEL | -r RANK]
@@ -57,6 +78,24 @@ options:
 ##### Example
 ```
 # Download all the annotations related to taxon 6669 up to the rank class 
-aython scripts/get_annotations.py -t 6669 -l 7
-```
+python scripts/get_annotations.py -t 6669 -l 7
 
+# The command will generate the following folder strunctures
+
+annotations_ncbi
+└── 6669_to_6658_ncbi_dataset
+    ├── annotations_ncbi
+    │   ├── GCA_013167095.2.gff
+    │   ├── GCF_020631705.1.gff
+    │   ├── GCF_021134715.1.gff
+    │   ├── GCF_021234035.1.gff
+    │   ├── GCF_022539665.2.gff
+    │   └── GCF_032884065.1.gff
+    ├── annotations_report_plots
+    │   ├── 250421_2034_assembly_gaps.png
+    │   ├── 250421_2034_assembly_stats.png
+    │   ├── 250421_2034_BUSCO.png
+    │   ├── 250421_2034_gene_stats.png
+    │   └── 250421_2034_summary_table.png
+    └── annotations_report.tsv
+```
