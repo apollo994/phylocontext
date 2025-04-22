@@ -1,8 +1,8 @@
 # phylocontext
 Provide phylogenetic context to genome annotations
 
-### What about annotations in close species?
-The goal of this projects is to obtain genome annotations from organisms related to a species of interest. This task is particularly usefull in the context of genome annotation and comparative genomics. This program relies on `datasets` and `dataformat` CLI form [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/) to facilitate the download of the annotations. Specie are generally refered as their ncbi taxonomy identifier.
+### Obtain annotations frome related species
+The goal of this projects is to obtain genome annotations from organisms related to a species of interest. This task is particularly usefull in the context of genome annotation and comparative genomics. This program relies on `datasets` and `dataformat` CLI form [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/) to facilitate the download of the annotations. Species are generally refered as their ncbi taxonomy identifier.
 
 This project is currently under development. 
 
@@ -34,9 +34,30 @@ options:
 # basic information for taxon 6669
 python scripts/get_info.py -t 6669
 
+| rank    | level | name          | taxon_id | annotation_count |
+|---------|-------|---------------|----------|------------------|
+| SPECIES | 0     | Daphnia pulex | 6669     | 1                |
+| GENUS   | 1     | Daphnia       | 6668     | 5                |
+| FAMILY  | 2     | Daphniidae    | 77658    | 5                |
+| ORDER   | 5     | Diplostraca   | 84337    | 5                |
+| CLASS   | 7     | Branchiopoda  | 6658     | 6                |
+| PHYLUM  | 11    | Arthropoda    | 6656     | 485              |
+| KINGDOM | 17    | Metazoa       | 33208    | 1757             |
+
+
 # adding -e (extended) and the number of parents level to check returns a more detailed report
 python scripts/get_info.py -t 6669 -e 7
 
+| rank       | name          | taxon_id | annotation_count_ref | annotation_count_all | assembly_count | species_count |
+|------------|---------------|----------|----------------------|----------------------|----------------|---------------|
+| SPECIES    | Daphnia pulex | 6669     | 1                    | 2                    | 7              | 1             |
+| GENUS      | Daphnia       | 6668     | 5                    | 9                    | 26             | 251           |
+| FAMILY     | Daphniidae    | 77658    | 5                    | 9                    | 28             | 635           |
+| INFRAORDER | Anomopoda     | 116561   | 5                    | 9                    | 29             | 1370          |
+| SUBORDER   | Cladocera     | 6665     | 5                    | 9                    | 29             | 1594          |
+| ORDER      | Diplostraca   | 84337    | 5                    | 9                    | 31             | 1964          |
+| SUBCLASS   | Phyllopoda    | 116557   | 5                    | 9                    | 41             | 2214          |
+| CLASS      | Branchiopoda  | 6658     | 6                    | 11                   | 51             | 2494          |
 ```
 
 #### Download annotations
