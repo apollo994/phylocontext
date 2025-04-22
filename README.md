@@ -61,7 +61,7 @@ python scripts/get_info.py -t 6669 -e 7
 ```
 
 #### Download annotations
-This triggers the download of all the annotations available for organisms close to the species of interest. It aslo generates a report and plots with with informations about the downloaded annotation and relative assemblies. 
+This triggers the download of all the annotations available for organisms close to the species of interest. It aslo generates a report and [plots](examples/annotations_report_plots/) with with informations about the downloaded annotation and relative assemblies. 
 ```
 python scripts/get_annotations.py --help
 usage: get_annotations.py [-h] -t TAXID [-o OUTPUT] [-l LEVEL | -r RANK]
