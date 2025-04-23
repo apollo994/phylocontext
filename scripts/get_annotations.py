@@ -42,7 +42,10 @@ def get_dataset_json(tax_id, children=False):
         )
 
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to run datasets command: {e}", file=sys.stderr)
+        command_str = " ".join(datasets_command)
+        print(f"\n[ERROR] Command failed: {command_str}", file=sys.stderr)
+        print(f"[ERROR] Exit Code: {e.returncode}", file=sys.stderr)
+        print(f"[ERROR] stderr:\n{e.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
     # Load JSON
