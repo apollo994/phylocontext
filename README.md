@@ -6,14 +6,18 @@ The goal of this projects is to obtain genome annotations from organisms related
 
 This project is currently under development. 
 
-### Usage
+### Installation
 
-#### Install dependencies
+#### Install with conda
 ```
 git clone https://github.com/apollo994/phylocontext.git
 conda env create -f environment.yml
 conda activate phylocontext
 ```
+#### Use with Docker/Singularity
+See documentation [here](docs/docker.md)
+
+### Usage
 
 #### Get species information
 This step helps in understanding the number of annatation available for the species of interest.
