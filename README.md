@@ -8,7 +8,7 @@ This project is currently under development.
 
 ### Installation
 
-#### Install with conda
+#### Use with conda
 ```
 git clone https://github.com/apollo994/phylocontext.git
 conda env create -f environment.yml
