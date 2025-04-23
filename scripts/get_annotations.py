@@ -430,7 +430,6 @@ def main():
     os.makedirs(plots_dir)
 
     ncbi_plots.plot_BUSCO(ann_df, plots_dir)
-    ncbi_plots.plot_annotations_info(ann_df, plots_dir)
     ncbi_plots.plot_assembly_stats(ann_df, plots_dir)
     ncbi_plots.plot_gene_stats(ann_df, plots_dir)
     ncbi_plots.plot_assembly_gaps(ann_df, plots_dir)
