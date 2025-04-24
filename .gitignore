@@ -9,3 +9,5 @@ annotations_ncbi
 .virtual_documents
 .nextflow
 work
+.nextflow.*
+results
