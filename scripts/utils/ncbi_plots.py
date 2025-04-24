@@ -111,7 +111,9 @@ def plot_BUSCO(df, target):
 
 
 def plot_annotations_info(df, target):
-
+    """
+    NOT IN USE AS IT'S HARD TO PREDICT TABLE SHAPE
+    """
     table_df = df[
         [
             "Organism_Name",
@@ -280,43 +282,66 @@ def plot_gene_stats(df, target):
 
 
 def plot_assembly_gaps(df, target):
+    
 
-    x_var = "Assembly_Stats_Total_Sequence_Length"
-    y_var = "Assembly_Stats_Total_Ungapped_Length"
+    x_var = 'Assembly_Stats_Total_Sequence_Length'
+    y_var = 'Assembly_Stats_Total_Ungapped_Length'
 
-    plt.figure()
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Create scatterplot
     sns.scatterplot(
-        data=df, x=x_var, y=y_var, hue="Organism_Name", style="lca_rank", s=60
+        data=df,
+        x=x_var,
+        y=y_var,
+        hue='Organism_Name',
+        style='lca_rank',
+        s=60,
+        ax=ax
     )
 
-    plt.xlabel(x_var.replace("Assembly_Stats_", "").replace("_", " "))
-    plt.ylabel(y_var.replace("Assembly_Stats_", "").replace("_", " "))
+    # Clean axis labels
+    ax.set_xlabel(x_var.replace('Assembly_Stats_', '').replace('_', ' '))
+    ax.set_ylabel(y_var.replace('Assembly_Stats_', '').replace('_', ' '))
 
-    plt.xscale("log")
-    plt.yscale("log")
+    # Set log scale
+    ax.set_xscale('log')
+    ax.set_yscale('log')
 
+    # Diagonal x=y reference line
     shortest = df[y_var].min()
     longest = df[x_var].max()
-    plt.plot(
+    ax.plot(
         [shortest, longest],
         [shortest, longest],
-        ls="--",
+        ls='--',
         linewidth=1,
-        c="black",
-        alpha=0.5,
+        c='black',
+        alpha=0.5
     )
 
-    for i, row in df.iterrows():
+    # Annotate gap
+    for _, row in df.iterrows():
         x = row[x_var]
         y = row[y_var]
-        plt.text(x + 0.05 * x, y, f"[gaps = {int(x) - int(y)}]", fontsize=7)
+        gap = int(x) - int(y)
 
-    plt.legend(loc="lower right")
-    plt.title("Gaps and Sequence Length", fontsize=14)
+        # Use offset to avoid overlap, safe for log scale
+        ax.annotate(
+            f"[gaps = {gap}]",
+            xy=(x, y),
+            xytext=(5, 0),
+            textcoords='offset points',
+            fontsize=7,
+        )
+
+
+    ax.legend(loc='best')
+    ax.set_title("Gaps and Sequence Length", fontsize=14)
     plt.tight_layout()
 
     # Saving
-    plt.savefig(build_filename(target, "assembly_gaps"), dpi=300, bbox_inches="tight")
+    plt.savefig(build_filename(target, "assembly_gaps"), dpi=150, bbox_inches="tight")
     plt.close()
 
     return 0

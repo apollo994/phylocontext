@@ -42,7 +42,10 @@ def get_dataset_json(tax_id, children=False):
         )
 
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to run datasets command: {e}", file=sys.stderr)
+        command_str = " ".join(datasets_command)
+        print(f"\n[ERROR] Command failed: {command_str}", file=sys.stderr)
+        print(f"[ERROR] Exit Code: {e.returncode}", file=sys.stderr)
+        print(f"[ERROR] stderr:\n{e.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
 
     # Load JSON
@@ -427,7 +430,6 @@ def main():
     os.makedirs(plots_dir)
 
     ncbi_plots.plot_BUSCO(ann_df, plots_dir)
-    ncbi_plots.plot_annotations_info(ann_df, plots_dir)
     ncbi_plots.plot_assembly_stats(ann_df, plots_dir)
     ncbi_plots.plot_gene_stats(ann_df, plots_dir)
     ncbi_plots.plot_assembly_gaps(ann_df, plots_dir)
