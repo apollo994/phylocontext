@@ -11,3 +11,4 @@ annotations_ncbi
 work
 .nextflow.*
 results
+__pycache__
