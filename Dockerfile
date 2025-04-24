@@ -24,11 +24,14 @@ COPY --from=builder $CONDA_ENV_PATH $CONDA_ENV_PATH
 ENV PATH=$CONDA_ENV_PATH/bin:$PATH
 ENV CONDA_DEFAULT_ENV=$CONDA_ENV_NAME
 
-# Set up structure
+# Set up WORKDIR
 WORKDIR /app/scripts
 COPY scripts/ /app/scripts/
 
-ENTRYPOINT ["python", "-u"]
-CMD ["get_annotations.py", "--help"]
+# Make scripts executable and link into PATH
+RUN chmod +x /app/scripts/get_annotations.py /app/scripts/get_info.py && \
+    ln -s /app/scripts/get_annotations.py /usr/local/bin/get_annotations && \
+    ln -s /app/scripts/get_info.py /usr/local/bin/get_info
 
-LABEL description="Command-line tool for fetching and processing NCBI annotations."
+# No ENTRYPOINT
+CMD ["get_annotations", "--help"]
