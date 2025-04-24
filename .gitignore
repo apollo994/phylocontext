@@ -1,14 +1,21 @@
-__pycache__
+# folders
 data
 tmp
-.ipynb_checkpoints
+notebooks
 annotations_ncbi
-.DS_Store
-*.log
-*.out
-.virtual_documents
+
+# python
+.ipynb_checkpoints
+__pycache__
+
+# nextflow
 .nextflow
 work
 .nextflow.*
 results
-__pycache__
+
+# others
+.DS_Store
+*.log
+*.out
+.virtual_documents
