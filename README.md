@@ -15,7 +15,10 @@ conda env create -f environment.yml
 conda activate phylocontext
 ```
 #### Use with Docker/Singularity
-See documentation [here](docs/docker.md)
+See documentation [here](docs/container.md)
+
+#### Integrate with nextflow
+See example [here](docs/nextflow.md)
 
 ### Usage
 
