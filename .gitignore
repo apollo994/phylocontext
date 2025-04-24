@@ -7,3 +7,4 @@ annotations_ncbi
 *.log
 *.out
 .virtual_documents
+__pycache__
