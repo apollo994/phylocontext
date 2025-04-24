@@ -7,3 +7,5 @@ annotations_ncbi
 *.log
 *.out
 .virtual_documents
+.nextflow
+work
