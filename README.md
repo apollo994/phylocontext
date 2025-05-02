@@ -18,7 +18,7 @@ conda activate phylocontext
 See documentation [here](docs/container.md)
 
 #### Integrate with nextflow
-See example [here](docs/nextflow.md)
+See [example](nextflow/) and [documentation](docs/nextflow.md)
 
 ### Usage
 
