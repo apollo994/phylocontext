@@ -210,27 +210,43 @@ def build_assembly_report(base_folder):
     data_dir = os.path.join(base_folder, "ncbi_dataset", "data")
     jsonl_path = os.path.join(data_dir, "assembly_data_report.jsonl")
 
+    print(f"[INFO] Looking for JSONL report at: {jsonl_path}")
+
     if not os.path.isfile(jsonl_path):
         print(f"[ERROR] Report file not found: {jsonl_path}", file=sys.stderr)
         sys.exit(1)
 
+    # The command to be run
+    # the assembly_data_report.json contains the "atgcCount" that can not be handled by dataformat
+    # adding --force is to overcome this temporarly
+    command = ["dataformat", "tsv", "genome", "--force"]
+
     try:
+        print(f"[INFO] Running command: {' '.join(command)} < {jsonl_path}")
+
         with open(jsonl_path, "r") as infile:
             result = subprocess.run(
-                ["dataformat", "tsv", "genome"],
+                command,
                 check=True,
                 text=True,
                 stdin=infile,
                 capture_output=True,
             )
+        
+        # If we want to see the raw output
+        # print("[DEBUG] Raw Output:")
+        # print(result.stdout)
+
         df = pd.read_csv(StringIO(result.stdout), sep="\t")
         print("[INFO] Assembly report parsed into DataFrame")
         return df
 
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] dataformat command failed: {e}", file=sys.stderr)
+        print(f"[ERROR] dataformat command failed with exit code {e.returncode}", file=sys.stderr)
+        print(f"[ERROR] Command used: {' '.join(command)}", file=sys.stderr)
+        print(f"[ERROR] STDERR output:\n{e.stderr}", file=sys.stderr)
+        print(f"[ERROR] STDOUT output:\n{e.stdout}", file=sys.stderr)
         sys.exit(1)
-
 
 def build_annotation_report(base_folder, input_taxid, focus_taxid):
     """
