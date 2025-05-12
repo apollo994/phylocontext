@@ -81,7 +81,6 @@ def main():
     ncbi_requests.flatten_and_rename_gff(download_location)
 
     # build annotation report with lca info
-    print(download_location)
     ann_df = ncbi_requests.build_annotation_report(download_location, args.taxid, focus_id)
 
     # make plots
