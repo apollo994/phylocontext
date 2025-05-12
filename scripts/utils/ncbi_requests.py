@@ -233,10 +233,6 @@ def build_assembly_report(base_folder):
                 capture_output=True,
             )
         
-        # If we want to see the raw output
-        # print("[DEBUG] Raw Output:")
-        # print(result.stdout)
-
         df = pd.read_csv(StringIO(result.stdout), sep="\t")
         print("[INFO] Assembly report parsed into DataFrame")
         return df
