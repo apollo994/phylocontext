@@ -9,7 +9,7 @@ import utils.ncbi_plots as ncbi_plots
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Plot summary metrics from annotation_report.tsv"
+        description="Stand alone script to plot summary metrics from ncbi annotation_report.tsv"
     )
 
     parser.add_argument(
