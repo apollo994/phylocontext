@@ -50,7 +50,12 @@ def main():
     )
 
     args = parser.parse_args()
-
+    
+    # check if custom input annotation has genome size
+    if args.input:
+        if not args.input_size:
+            sys.exit("Error: --input_size (-is) must be provided when --input (-i) is specified.")
+    
 
     # Check if output directory exists
     output_dir = os.path.join(args.output, "ministats")
