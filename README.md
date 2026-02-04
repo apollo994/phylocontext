@@ -1,4 +1,4 @@
-[!WARNING] This project is not maintained anymore. Use [annocli]() instead. 
+⚠️ This project is not maintained anymore. Use [annocli]() instead. 
 
 # phylocontext
 Provide phylogenetic context to genome annotations
