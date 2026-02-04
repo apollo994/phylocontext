@@ -1,4 +1,4 @@
-⚠️ This project is not maintained anymore. Use [annocli]() instead. 
+⚠️ This project is not maintained anymore. Use [annocli](https://github.com/apollo994/annocli/tree/main) instead. 
 
 # phylocontext
 Provide phylogenetic context to genome annotations
