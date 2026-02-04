@@ -144,7 +144,7 @@ def plot_annotations_info(df, target):
 
     # Formatting for readability
     table.auto_set_font_size(False)
-    table.set_fontsize(12)
+    table.set_fontsize(16)
     table.scale(1.2, 1.5)  # Adjust scaling to help with long text
 
     plt.tight_layout()
@@ -198,12 +198,12 @@ def plot_assembly_stats(df, target):
     )
 
     # Improve formatting
-    g.set_titles("{col_name}")
+    g.set_titles("{col_name}", size = 18)
     g.set_axis_labels("Value", "")
     g.set(xscale="linear")
     for ax in g.axes.flatten():
         ax.grid(True, axis="x", linestyle="--", alpha=0.3)
-        ax.tick_params(axis="y", labelsize=12)
+        ax.tick_params(axis="y", labelsize=16)
 
     # Legend
     g._legend.set_title("LCA Rank")
@@ -260,11 +260,11 @@ def plot_gene_stats(df, target):
     )
 
     # Final touches
-    g.set_titles("{col_name}")
+    g.set_titles("{col_name}", size = 18)
     g.set_axis_labels("Gene count", "")
     for ax in g.axes.flatten():
         ax.grid(True, axis="x", linestyle="--", alpha=0.3)
-        ax.tick_params(axis="y", labelsize=8)
+        ax.tick_params(axis="y", labelsize=16)
 
     g._legend.set_title("LCA Rank")
     g._legend.set_loc("upper right")
