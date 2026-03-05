@@ -1,5 +1,3 @@
-⚠️ This project is not maintained anymore. See [annocli](https://github.com/apollo994/annocli/tree/main) instead. 
-
 # phylocontext
 Provide phylogenetic context to genome annotations
 
